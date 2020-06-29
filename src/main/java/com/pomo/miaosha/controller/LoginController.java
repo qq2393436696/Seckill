@@ -17,36 +17,34 @@ import javax.validation.Valid;
 @Controller
 @RequestMapping("/login")
 /*
-* 1、跳转登录页面
-* 2、登录
-* */
-public class LoginController {
+ * 1、跳转登录页面
+ * 2、登录
+ * */ public class LoginController {
 
-    private static Logger log = LoggerFactory.getLogger(LoginController.class);  //日志
+	private static Logger log = LoggerFactory.getLogger(LoginController.class);  //日志
 
-    @Autowired
-    MiaoshaUserService userService;
+	@Autowired
+	MiaoshaUserService userService;
 
-    @Autowired
-    RedisService redisService;
+	@Autowired
+	RedisService redisService;
 
-    @RequestMapping("/to_login")   //跳转登录页面
-    public String toLogin() {
-        return "login";
-    }
-
+	@RequestMapping("/to_login")   //跳转登录页面
+	public String toLogin() {
+		return "login";
+	}
 
 
-    //loginVo从前端传过来的手机号，密码（密码在前端被加密）
-    @RequestMapping("/do_login")    //登录
-    @ResponseBody
-    public Result<String> doLogin(HttpServletResponse response, @Valid LoginVo loginVo) {
-        log.info(loginVo.toString());
+	//loginVo从前端传过来的手机号，密码（密码在前端被加密）
+	@RequestMapping("/do_login")    //登录
+	@ResponseBody
+	public Result<String> doLogin(HttpServletResponse response, @Valid LoginVo loginVo) {
+		log.info(loginVo.toString());
 
-        //登录
-        String token = userService.login(response, loginVo);
-        System.out.println(loginVo.getMobile());
-        System.out.println(loginVo.getPassword());
-        return Result.success(token);
-    }
+		//登录
+		String token = userService.login(response, loginVo);
+		System.out.println(loginVo.getMobile());
+		System.out.println(loginVo.getPassword());
+		return Result.success(token);
+	}
 }

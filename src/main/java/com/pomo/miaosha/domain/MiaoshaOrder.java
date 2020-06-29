@@ -1,10 +1,12 @@
 package com.pomo.miaosha.domain;
-
+/*
+* 秒杀订单
+* */
 public class MiaoshaOrder {
-    private Long id;
-    private Long userId;
-    private Long  orderId;
-    private Long goodsId;
+    private Long id; //ID
+    private Long userId;  //用户ID
+    private Long  orderId;  //订单ID
+    private Long goodsId;  //商品ID
     public Long getId() {
         return id;
     }

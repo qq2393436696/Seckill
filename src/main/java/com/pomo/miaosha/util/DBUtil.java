@@ -6,26 +6,29 @@ import java.sql.DriverManager;
 import java.util.Properties;
 
 public class DBUtil {
-	
-	private static Properties props;
-	
+
+	private static Properties properties;
+
 	static {
 		try {
 			InputStream in = DBUtil.class.getClassLoader().getResourceAsStream("application.properties");
-			props = new Properties();
-			props.load(in);
+			properties = new Properties();
+			properties.load(in);
 			in.close();
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
-	public static Connection getConn() throws Exception{
-		String url = props.getProperty("spring.datasource.url");
-		String username = props.getProperty("spring.datasource.username");
-		String password = props.getProperty("spring.datasource.password");
-		String driver = props.getProperty("spring.datasource.driver-class-name");
+
+	/*
+	 * 获得DB连接
+	 * */
+	public static Connection getConn() throws Exception {
+		String url = properties.getProperty("spring.datasource.url");
+		String username = properties.getProperty("spring.datasource.username");
+		String password = properties.getProperty("spring.datasource.password");
+		String driver = properties.getProperty("spring.datasource.driver-class-name");
 		Class.forName(driver);
-		return DriverManager.getConnection(url,username, password);
+		return DriverManager.getConnection(url, username, password);
 	}
 }

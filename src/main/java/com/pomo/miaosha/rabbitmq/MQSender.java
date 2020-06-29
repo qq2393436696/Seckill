@@ -12,17 +12,19 @@ import org.springframework.stereotype.Service;
 @Service
 public class MQSender {
 
-    private static Logger log = LoggerFactory.getLogger(MQSender.class);
+	private static Logger log = LoggerFactory.getLogger(MQSender.class);
 
-    @Autowired
-    AmqpTemplate amqpTemplate;
+	@Autowired
+	AmqpTemplate amqpTemplate;
 
-
-    public void sendMiaoshaMessage(MiaoshaMessage miaoshaMessage) {
-        String msg = RedisService.beanToString(miaoshaMessage);
-        log.info("send message:"+msg);
-        amqpTemplate.convertAndSend(MQConfig.MIAOSHA_QUEUE, msg);
-    }
+	/*
+	 * 发送秒杀信息
+	 * */
+	public void sendMiaoshaMessage(MiaoshaMessage miaoshaMessage) {
+		String msg = RedisService.beanToString(miaoshaMessage);
+		log.info("send message:" + msg);
+		amqpTemplate.convertAndSend(MQConfig.MIAOSHA_QUEUE, msg);
+	}
 
     /*
     public void send(Object message) {

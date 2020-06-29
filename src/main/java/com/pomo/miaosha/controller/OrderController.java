@@ -21,33 +21,33 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/order")
 public class OrderController {
 
-    @Autowired
-    MiaoshaUserService userService;
+	@Autowired
+	MiaoshaUserService userService;
 
-    @Autowired
-    RedisService redisService;
+	@Autowired
+	RedisService redisService;
 
-    @Autowired
-    OrderService orderService;
+	@Autowired
+	OrderService orderService;
 
-    @Autowired
-    GoodsService goodsService;
+	@Autowired
+	GoodsService goodsService;
 
-    @RequestMapping("/detail")
-    @ResponseBody
-    public Result<OrderDetailVo> info(Model model, MiaoshaUser user, @RequestParam("orderId")long orderId) {
-        if(user == null) {
-            return Result.error(CodeMsg.SESSION_ERROR);
-        }
-        OrderInfo order = orderService.getOrderById(orderId);
-        if(order == null) {
-            return Result.error(CodeMsg.ORDER_NOT_EXIST);
-        }
-        long goodsId = order.getGoodsId();
-        GoodsVo goods = goodsService.getGoodsVoByGoodsId(goodsId);
-        OrderDetailVo vo = new OrderDetailVo();
-        vo.setGoods(goods);
-        vo.setOrder(order);
-        return Result.success(vo);
-    }
+	@RequestMapping("/detail")
+	@ResponseBody
+	public Result<OrderDetailVo> info(Model model, MiaoshaUser user, @RequestParam("orderId") long orderId) {
+		if (user == null) {
+			return Result.error(CodeMsg.SESSION_ERROR);
+		}
+		OrderInfo order = orderService.getOrderById(orderId);
+		if (order == null) {
+			return Result.error(CodeMsg.ORDER_NOT_EXIST);
+		}
+		long goodsId = order.getGoodsId();
+		GoodsVo goods = goodsService.getGoodsVoByGoodsId(goodsId);
+		OrderDetailVo vo = new OrderDetailVo();
+		vo.setGoods(goods);
+		vo.setOrder(order);
+		return Result.success(vo);
+	}
 }

@@ -3,18 +3,18 @@ package com.pomo.miaosha.controller;
 import com.pomo.miaosha.access.AccessLimit;
 import com.pomo.miaosha.domain.MiaoshaOrder;
 import com.pomo.miaosha.domain.MiaoshaUser;
-import com.pomo.miaosha.domain.OrderInfo;
 import com.pomo.miaosha.rabbitmq.MQSender;
 import com.pomo.miaosha.rabbitmq.MiaoshaMessage;
 import com.pomo.miaosha.redis.*;
+import com.pomo.miaosha.redis.key.GoodsKey;
+import com.pomo.miaosha.redis.key.MiaoshaKey;
+import com.pomo.miaosha.redis.key.OrderKey;
 import com.pomo.miaosha.result.CodeMsg;
 import com.pomo.miaosha.result.Result;
 import com.pomo.miaosha.service.GoodsService;
 import com.pomo.miaosha.service.MiaoshaService;
 import com.pomo.miaosha.service.MiaoshaUserService;
 import com.pomo.miaosha.service.OrderService;
-import com.pomo.miaosha.util.MD5Util;
-import com.pomo.miaosha.util.UUIDUtil;
 import com.pomo.miaosha.vo.GoodsVo;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,78 +35,82 @@ import java.util.Map;
 @RequestMapping("/miaosha")
 public class MiaoshaController implements InitializingBean {
 
-    @Autowired
-    MiaoshaUserService userService;
+	@Autowired
+	MiaoshaUserService userService;
 
-    @Autowired
-    RedisService redisService;
+	@Autowired
+	RedisService redisService;
 
-    @Autowired
-    GoodsService goodsService;
+	@Autowired
+	GoodsService goodsService;
 
-    @Autowired
-    OrderService orderService;
+	@Autowired
+	OrderService orderService;
 
-    @Autowired
-    MiaoshaService miaoshaService;
+	@Autowired
+	MiaoshaService miaoshaService;
 
-    @Autowired
-    MQSender sender;
+	@Autowired
+	MQSender sender;
 
-    private Map<Long, Boolean> localOverMap = new HashMap<>();
+	private Map<Long, Boolean> localOverMap = new HashMap<>();
 
-    /**
-     * 系统初始化
-     */
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        List<GoodsVo> goodsList = goodsService.listGoodsVo();
-        if(goodsList == null) {
-            return;
-        }
-        for(GoodsVo goods : goodsList) {
-            redisService.set(GoodsKey.getMiaoshaGoodsStock, ""+goods.getId(), goods.getStockCount());
-            localOverMap.put(goods.getId(), false);
-        }
-    }
+	/**
+	 * 系统初始化
+	 */
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		List<GoodsVo> goodsList = goodsService.listGoodsVo(); //查询所有商品集合
+		if (goodsList == null) {
+			return;
+		}
+		goodsList.forEach(goods ->{
+			redisService.set(GoodsKey.getMiaoshaGoodsStock, "" + goods.getId(), goods.getStockCount());
+			localOverMap.put(goods.getId(), false);
+		});
+	}
 
-    @RequestMapping(value="/{path}/do_miaosha", method=RequestMethod.POST)
-    @ResponseBody
-    public Result<Integer> miaosha(Model model, MiaoshaUser user, @RequestParam("goodsId")long goodsId, @PathVariable("path")String path ){
-        model.addAttribute("user", user);
-        if(user == null) {
-            return Result.error(CodeMsg.SESSION_ERROR);
-        }
-        //验证path
-        boolean check = miaoshaService.checkPath(user, goodsId, path);
-        if(!check){
-            return Result.error(CodeMsg.REQUEST_ILLEGAL);
-        }
+	/*
+	* 秒杀
+	* */
+	@RequestMapping(value = "/{path}/do_miaosha", method = RequestMethod.POST)
+	@ResponseBody
+	public Result<Integer> miaosha(Model model, MiaoshaUser user, @RequestParam("goodsId") long goodsId,
+			@PathVariable("path") String path) {
+		model.addAttribute("user", user);
+		if (user == null) {
+			return Result.error(CodeMsg.SESSION_ERROR);//Session不存在或者已经失效
+		}
+		//验证path
+		boolean check = miaoshaService.checkPath(user, goodsId, path);
+		if (!check) {
+			return Result.error(CodeMsg.REQUEST_ILLEGAL);//请求非法
+		}
 
-        //内存标记，减少redis访问
-        boolean over = localOverMap.get(goodsId);
-        if(over) {
-            return Result.error(CodeMsg.MIAO_SHA_OVER);
-        }
+		//内存标记，减少redis访问
+		boolean over = localOverMap.get(goodsId);
+		if (over) {
+			return Result.error(CodeMsg.MIAO_SHA_OVER);//商品已经秒杀完毕
+		}
 
-        //预减库存
-        long stock = redisService.decr(GoodsKey.getMiaoshaGoodsStock, "" + goodsId);
-        if (stock < 0) {
-            localOverMap.put(goodsId, true);
-            return Result.error(CodeMsg.MIAO_SHA_OVER);
-        }
-        //判断是否已经秒杀到了
-        MiaoshaOrder order = orderService.getMiaoshaOrderByUserIdGoodsId(user.getId(), goodsId);
-        if(order != null) {
-            return Result.error(CodeMsg.REPEATE_MIAOSHA);
-        }
-        //入队
-        MiaoshaMessage miaoshaMessage = new MiaoshaMessage();
-        miaoshaMessage.setUser(user);
-        miaoshaMessage.setGoodsId(goodsId);
-        sender.sendMiaoshaMessage(miaoshaMessage);
+		//预减库存
+		long stock = redisService.decr(GoodsKey.getMiaoshaGoodsStock, "" + goodsId);
+		if (stock < 0) {
+			localOverMap.put(goodsId, true);
+			return Result.error(CodeMsg.MIAO_SHA_OVER);//商品已经秒杀完毕
+		}
+		//判断是否已经秒杀到了
+		MiaoshaOrder order = orderService.getMiaoshaOrderByUserIdGoodsId(user.getId(), goodsId);
+		if (order != null) {
+			return Result.error(CodeMsg.REPEATE_MIAOSHA);//不能重复秒杀
+		}
+		//入队
+		MiaoshaMessage miaoshaMessage = new MiaoshaMessage();
+		miaoshaMessage.setUser(user);
+		miaoshaMessage.setGoodsId(goodsId);
+		sender.sendMiaoshaMessage(miaoshaMessage);
 
-        return Result.success(0); //排队中
+		return Result.success(0); //排队中
 
         /*
         //判断库存
@@ -125,76 +129,80 @@ public class MiaoshaController implements InitializingBean {
         System.out.println(stock);
         return Result.success(orderInfo);
         */
-    }
+	}
 
-    @RequestMapping(value="/reset", method=RequestMethod.GET)
-    @ResponseBody
-    public Result<Boolean> reset(Model model) {
-        List<GoodsVo> goodsList = goodsService.listGoodsVo();
-        for(GoodsVo goods : goodsList) {
-            goods.setStockCount(10);
-            redisService.set(GoodsKey.getMiaoshaGoodsStock, ""+goods.getId(), 10);
-            localOverMap.put(goods.getId(), false);
-        }
-        redisService.delete(OrderKey.getMiaoshaOrderByUisGid);
-        redisService.delete(MiaoshaKey.isGoodsOver);
-        miaoshaService.reset(goodsList);
-        return Result.success(true);
-    }
+	/*
+	 * 库存复位
+	 * */
+	@RequestMapping(value = "/reset", method = RequestMethod.GET)
+	@ResponseBody
+	public Result<Boolean> reset(Model model) {
+		List<GoodsVo> goodsList = goodsService.listGoodsVo();
+		goodsList.forEach(goods -> {
+			goods.setStockCount(20);
+			redisService.set(GoodsKey.getMiaoshaGoodsStock, "" + goods.getId(), 10);
+			localOverMap.put(goods.getId(), false);
+		});
+		redisService.delete(OrderKey.getMiaoshaOrderByUisGid);
+		redisService.delete(MiaoshaKey.isGoodsOver);
+		miaoshaService.reset(goodsList);
+		return Result.success(true);
+	}
 
-    /**
-     * orderId : 成功
-     * -1 : 秒杀失败
-     * 0 : 排队中
-     */
-    @RequestMapping(value="/result", method=RequestMethod.GET)
-    @ResponseBody
-    public Result<Long> miaoshaResult(Model model, MiaoshaUser user, @RequestParam("goodsId")long goodsId) {
-        model.addAttribute("user", user);
-        if (user == null) {
-            return Result.error(CodeMsg.SESSION_ERROR);
-        }
-        long result = miaoshaService.getMiaoshaResult(user.getId(), goodsId);
-        return Result.success(result);
-    }
+	/**
+	 * orderId : 成功
+	 * -1 : 秒杀失败
+	 * 0 : 排队中
+	 */
+	@RequestMapping(value = "/result", method = RequestMethod.GET)
+	@ResponseBody
+	public Result<Long> miaoshaResult(Model model, MiaoshaUser user, @RequestParam("goodsId") long goodsId) {
+		model.addAttribute("user", user);
+		if (user == null) {
+			return Result.error(CodeMsg.SESSION_ERROR);//Session不存在或者已经失效
+		}
+		long result = miaoshaService.getMiaoshaResult(user.getId(), goodsId);
+		return Result.success(result);
+	}
 
-    //正常verifyCode不能设默认值，只是为了测试限流能快速点击
-    @AccessLimit(seconds = 5, maxCount = 5, needLogin = true)
-    @RequestMapping(value="/path", method=RequestMethod.GET)
-    @ResponseBody
-    public Result<String> getMiaoshaPath(HttpServletRequest request, MiaoshaUser user,
-                                         @RequestParam("goodsId")long goodsId,
-                                         @RequestParam(value="verifyCode", defaultValue="0")int verifyCode) {
-        if (user == null) {
-            return Result.error(CodeMsg.SESSION_ERROR);
-        }
+	//正常verifyCode不能设默认值，只是为了测试限流能快速点击
+	@AccessLimit(seconds = 5, maxCount = 5, needLogin = true)
+	@RequestMapping(value = "/path", method = RequestMethod.GET)
+	@ResponseBody
+	public Result<String> getMiaoshaPath(HttpServletRequest request, MiaoshaUser user,
+			@RequestParam("goodsId") long goodsId,
+			@RequestParam(value = "verifyCode", defaultValue = "0") int verifyCode) {
+		if (user == null) {
+			return Result.error(CodeMsg.SESSION_ERROR);
+		}
 
-        //验证验证码
-        boolean check = miaoshaService.checkVerifyCode(user, goodsId, verifyCode);
-        String path = miaoshaService.createMiaoshaPath(user, goodsId);
-        if(!check) {
-            return Result.error(CodeMsg.REQUEST_ILLEGAL);
-        }
-        return Result.success(path);
-    }
+		//验证验证码
+		boolean check = miaoshaService.checkVerifyCode(user, goodsId, verifyCode);
+		String path = miaoshaService.createMiaoshaPath(user, goodsId);
+		if (!check) {
+			return Result.error(CodeMsg.REQUEST_ILLEGAL);
+		}
+		return Result.success(path);
+	}
 
-    @RequestMapping(value="/verifyCode", method=RequestMethod.GET)
-    @ResponseBody
-    public Result<String> getMiaoshaVerifyCode(HttpServletResponse response, MiaoshaUser user, @RequestParam("goodsId")long goodsId) {
+	@RequestMapping(value = "/verifyCode", method = RequestMethod.GET)
+	@ResponseBody
+	public Result<String> getMiaoshaVerifyCode(HttpServletResponse response, MiaoshaUser user,
+			@RequestParam("goodsId") long goodsId) {
 
-        if (user == null) {
-            return Result.error(CodeMsg.SESSION_ERROR);
-        }
-        BufferedImage image = miaoshaService.createVerifyCode(user, goodsId);
-        try {
-            OutputStream out = response.getOutputStream();
-            ImageIO.write(image, "JPEG", out);
-            out.flush();
-            out.close();
-            return null;
-        } catch(Exception e) {
-            e.printStackTrace();
-            return Result.error(CodeMsg.MIAOSHA_FAIL);
-        }
-    }
+		if (user == null) {
+			return Result.error(CodeMsg.SESSION_ERROR);
+		}
+		BufferedImage image = miaoshaService.createVerifyCode(user, goodsId);
+		try {
+			OutputStream out = response.getOutputStream();
+			ImageIO.write(image, "JPEG", out);
+			out.flush();
+			out.close();
+			return null;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return Result.error(CodeMsg.MIAOSHA_FAIL);
+		}
+	}
 }

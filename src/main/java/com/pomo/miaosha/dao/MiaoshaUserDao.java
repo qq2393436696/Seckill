@@ -8,10 +8,16 @@ import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface MiaoshaUserDao {
+	/*
+	 *
+	 * 根据ID查询所有秒杀用户
+	 * */
+	@Select("select * from miaosha_user where id = #{id}")
+	public MiaoshaUser getById(@Param("id") long id);
 
-    @Select("select * from miaosha_user where id = #{id}")
-    public MiaoshaUser getById(@Param("id")long id);
-
-    @Update("update miaosha_user set password = #{password} where id = #{id}")
-    public void update(MiaoshaUser toBeUpdate);
+	/*
+	 * 修改秒杀用户的密码
+	 * */
+	@Update("update miaosha_user set password = #{password} where id = #{id}")
+	public void update(MiaoshaUser toBeUpdate);
 }

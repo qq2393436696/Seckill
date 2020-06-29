@@ -19,43 +19,47 @@ import org.springframework.stereotype.Service;
 @Service
 public class MQReceiver {
 
-    @Autowired
-    MiaoshaUserService userService;
+	@Autowired
+	MiaoshaUserService userService;
 
-    @Autowired
-    RedisService redisService;
+	@Autowired
+	RedisService redisService;
 
-    @Autowired
-    GoodsService goodsService;
+	@Autowired
+	GoodsService goodsService;
 
-    @Autowired
-    OrderService orderService;
+	@Autowired
+	OrderService orderService;
 
-    @Autowired
-    MiaoshaService miaoshaService;
+	@Autowired
+	MiaoshaService miaoshaService;
 
-    private static Logger log = LoggerFactory.getLogger(MQReceiver.class);
+	private static Logger log = LoggerFactory.getLogger(MQReceiver.class);
 
-    @RabbitListener(queues=MQConfig.MIAOSHA_QUEUE)
-    public void receive(String message) {
-        log.info("receive message:"+message);
-        MiaoshaMessage miaoshaMessage  = RedisService.stringToBean(message, MiaoshaMessage.class);
-        MiaoshaUser user = miaoshaMessage.getUser();
-        long goodsId = miaoshaMessage.getGoodsId();
 
-        GoodsVo goods = goodsService.getGoodsVoByGoodsId(goodsId);
-        int stock = goods.getStockCount();
-        if(stock <= 0) {
-            return;
-        }
-        //判断是否已经秒杀到了
-        MiaoshaOrder order = orderService.getMiaoshaOrderByUserIdGoodsId(user.getId(), goodsId);
-        if(order != null) {
-            return;
-        }
-        //减库存 下订单 写入秒杀订单
-        miaoshaService.miaosha(user, goods);
-    }
+	/*
+	 * 接受秒杀信息
+	 * */
+	@RabbitListener(queues = MQConfig.MIAOSHA_QUEUE)
+	public void receive(String message) {
+		log.info("receive message:" + message);
+		MiaoshaMessage miaoshaMessage = RedisService.stringToBean(message, MiaoshaMessage.class);
+		MiaoshaUser user = miaoshaMessage.getUser();
+		long goodsId = miaoshaMessage.getGoodsId();
+
+		GoodsVo goods = goodsService.getGoodsVoByGoodsId(goodsId);
+		int stock = goods.getStockCount();
+		if (stock <= 0) {
+			return;
+		}
+		//判断是否已经秒杀到了
+		MiaoshaOrder order = orderService.getMiaoshaOrderByUserIdGoodsId(user.getId(), goodsId);
+		if (order != null) {
+			return;
+		}
+		//减库存 下订单 写入秒杀订单
+		miaoshaService.miaosha(user, goods);
+	}
 
     /*
     @RabbitListener(queues=MQConfig.QUEUE)

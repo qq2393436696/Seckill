@@ -12,15 +12,33 @@ import java.util.List;
 @Mapper
 public interface GoodsDao {
 
-    @Select("select g.*, mg.stock_count, mg.start_date, mg.end_date, mg.miaosha_price from miaosha_goods mg left join goods g on mg.goods_id = g.id")
-    public List<GoodsVo> listGoodsVo();
+	/*
+	 *查询所有商品集合
+	 * */
+	@Select("select goods.*, miaoshaGoods.stock_count, miaoshaGoods.start_date, miaoshaGoods.end_date, miaoshaGoods.miaosha_price "
+			+ "from miaosha_goods miaoshaGoods left join goods goods on miaoshaGoods.goods_id = goods.id")
+	public List<GoodsVo> listGoodsVo();
 
-    @Select("select g.*, mg.stock_count, mg.start_date, mg.end_date, mg.miaosha_price from miaosha_goods mg left join goods g on mg.goods_id = g.id where g.id = #{goodsId}")
-    public GoodsVo getGoodsVoByGoodsId(@Param("goodsId")long goodsId);
+	/*
+	 * 根据goodsId查询商品
+	 * */
+	@Select("select goods.*, miaoshaGoods.stock_count, miaoshaGoods.start_date, miaoshaGoods.end_date, miaoshaGoods.miaosha_price "
+			+ "from miaosha_goods miaoshaGoods left join goods goods on miaoshaGoods.goods_id = goods.id where goods.id = #{goodsId}")
+	public GoodsVo getGoodsVoByGoodsId(@Param("goodsId") long goodsId);
 
-    @Update("update miaosha_goods set stock_count = stock_count - 1 where goods_id = #{goodsId} and stock_count > 0")
-    public int reduceStock(MiaoshaGoods g);
+	/**
+	 * 减商品库存
+	 * @param  miaoshaGoods 秒杀商品
+	 * @return int 返回修改成功的个数
+	 */
+	@Update("update miaosha_goods set stock_count = stock_count - 1 where goods_id = #{goodsId} and stock_count > 0")
+	public int reduceStock(MiaoshaGoods miaoshaGoods);
 
-    @Update("update miaosha_goods set stock_count = #{stockCount} where goods_id = #{goodsId}")
-    public int resetStock(MiaoshaGoods g);
+	/**
+	 * 库存复位
+	 * @param  miaoshaGoods 秒杀商品
+	 * @return int 返回修改成功的个数
+	 */
+	@Update("update miaosha_goods set stock_count = #{stockCount} where goods_id = #{goodsId}")
+	public int resetStock(MiaoshaGoods miaoshaGoods);
 }

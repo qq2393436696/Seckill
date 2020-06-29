@@ -1,19 +1,21 @@
 package com.pomo.miaosha.domain;
 
 import java.util.Date;
-
+/*
+* 订单信息
+* */
 public class OrderInfo {
-    private Long id;
-    private Long userId;
-    private Long goodsId;
-    private Long  deliveryAddrId;
-    private String goodsName;
-    private Integer goodsCount;
-    private Double goodsPrice;
-    private Integer orderChannel;
-    private Integer status;
-    private Date createDate;
-    private Date payDate;
+    private Long id;  //ID
+    private Long userId;	//用户ID
+    private Long goodsId;	//商品ID
+    private Long  deliveryAddrId; //送货地址ID
+    private String goodsName;	//商品名称
+    private Integer goodsCount;	//商品数
+    private Double goodsPrice;	//商品价格
+    private Integer orderChannel;	//订购频道
+    private Integer status;	//状态
+    private Date createDate;	//创建时间
+    private Date payDate;	//支付时间
     public Long getId() {
         return id;
     }

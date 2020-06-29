@@ -19,18 +19,18 @@ import java.util.List;
 @RequestMapping("/user")
 public class UserController {
 
-    @Autowired
-    MiaoshaUserService userService;
+	@Autowired
+	MiaoshaUserService userService;
 
-    @Autowired
-    RedisService redisService;
+	@Autowired
+	RedisService redisService;
 
 
-    @RequestMapping("/info")
-    @ResponseBody
-    public Result<MiaoshaUser> info(Model model, MiaoshaUser user){
-        model.addAttribute("user", user);
-        return Result.success(user);
-    }
+	@RequestMapping("/info")
+	@ResponseBody
+	public Result<MiaoshaUser> info(Model model, MiaoshaUser user) {
+		model.addAttribute("user", user);
+		return Result.success(user);
+	}
 }
 
